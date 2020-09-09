@@ -1,0 +1,19 @@
+{
+  "name": "ringcentral-proxy",
+  "version": "0.0.1",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "cookie-session": "^1.4.0",
+    "cors": "^2.8.5",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "http": "^0.0.0",
+    "node-fetch": "^2.6.0",
+    "querystring": "^0.2.0",
+    "request": "^2.88.2"
+  }
+}
