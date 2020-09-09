@@ -33,7 +33,7 @@ const ringcentralOptions = {
 };
 
 // Handle authorize request, redirect to RingCentral OAuth url
-app.get('/proxy/authorize', (_, res) => {
+app.get('/proxy/authorize', (req, res) => {
   req.session.redirectAfterAuth = null;
   const rcSDK = new RingCentral(ringcentralOptions);
   res.redirect(rcSDK.loginUrl());
