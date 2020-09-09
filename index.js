@@ -72,17 +72,37 @@ const onLogout = async (req, res) => {
 app.get('/proxy/logout', onLogout);
 app.post('/proxy/logout', onLogout);
 
+const tokenRefreshPromise = {};
 // Check if user authorized, refresh token if need
 async function checkAuthBeforeRequest(rcSDK, req) {
   let token = req.session.token;
   if (!token || !rcSDK.isRefreshTokenValid(token)) {
     return { authorized: false };
   }
+  let authorized = true;
   if (!rcSDK.isAccessTokenValid(token)) {
-    token = await rcSDK.refreshToken(token);
-    req.session.token = token;
+    let needToUpdateSession = false;
+    // handle refresh token concurrence issue
+    if (!tokenRefreshPromise[token.refresh_token]) {
+      needToUpdateSession = true;
+      tokenRefreshPromise[token.refresh_token] = rcSDK.refreshToken(token)
+    }
+    try {
+      token = await tokenRefreshPromise[token.refresh_token];
+    } catch (e) {
+      console.error(e);
+      authorized = false
+    }
+    delete tokenRefreshPromise[token.refresh_token];
+    if (needToUpdateSession) {
+      if (authorized) {
+        req.session.token = token;
+      } else {
+        req.session.token = null;
+      }
+    }
   }
-  return { authorized: true, token }
+  return { authorized, token }
 }
 
 // API to validate if user authorized
