@@ -1,0 +1,36 @@
+{
+  "name": "RingCentral Proxy",
+  "description": "A lite node.js app to show how to authorize RingCentral in server side. Use cookie to authorize with client side, and proxy client-side request to RingCentral API request.",
+  "repository": "https://github.com/embbnux/ringcentral-proxy",
+  "keywords": ["node", "express", "ringcentral", "proxy"],
+  "env": {
+    "SERVER_SECRET_KEY": {
+      "description": "A secret key for verifying the integrity of signed cookies.",
+      "generator": "secret"
+    },
+    "SERVER": {
+      "description": "Your heroku app URI.",
+      "value": "https://your_app_name.herokuapp.com"
+    },
+    "APP_ORIGIN": {
+      "description": "The client app origin for CORS",
+      "value": "https://ringcentral.github.io"
+    },
+    "APP_AUTH_REDIRECT": {
+      "description": "Redirect uri to client app after authorization in server-side",
+      "value": "https://ringcentral.github.io/ringcentral-embeddable/redirect.html"
+    },
+    "RINGCENTRAL_CLIENT_ID": {
+      "description": "Your RingCentral app client id",
+      "value": "your_ringcentral_client_id"
+    },
+    "RINGCENTRAL_CLIENT_SECRET": {
+      "description": "Your RingCentral app client secret",
+      "value": "your_ringcentral_client_secret"
+    },
+    "RINGCENTRAL_SERVER": {
+      "description": "RingCentral API server, eg: https://platform.devtest.ringcentral.com",
+      "value": "https://platform.ringcentral.com"
+    }
+  }
+}
