@@ -1,9 +1,15 @@
 const cors = require('cors');
 const http = require('http');
 const request = require('request');
-const { RingCentral } = require('./lib/ringcentral');
 const cookieSession = require('cookie-session')
 const express = require('express');
+const { RingCentral } = require('./lib/ringcentral');
+const {
+  checkAuthBeforeRequest,
+  shouldHandleMediaLink,
+  formatHeaders,
+  handleMediaLink,
+} = require('./lib/utils');
 
 require('dotenv').config()
 
@@ -73,39 +79,6 @@ const onLogout = async (req, res) => {
 app.get('/proxy/logout', onLogout);
 app.post('/proxy/logout', onLogout);
 
-const tokenRefreshPromise = {};
-// Check if user authorized, refresh token if need
-async function checkAuthBeforeRequest(rcSDK, req) {
-  let token = req.session.token;
-  if (!token || !rcSDK.isRefreshTokenValid(token)) {
-    return { authorized: false };
-  }
-  let authorized = true;
-  if (!rcSDK.isAccessTokenValid(token)) {
-    let needToUpdateSession = false;
-    // handle refresh token concurrence issue, TODO: should save token in DB to avoid concurrence issue
-    if (!tokenRefreshPromise[token.refresh_token]) {
-      needToUpdateSession = true;
-      tokenRefreshPromise[token.refresh_token] = rcSDK.refreshToken(token)
-    }
-    try {
-      token = await tokenRefreshPromise[token.refresh_token];
-    } catch (e) {
-      console.error(e);
-      authorized = false
-    }
-    delete tokenRefreshPromise[token.refresh_token];
-    if (needToUpdateSession) {
-      if (authorized) {
-        req.session.token = token;
-      } else {
-        req.session.token = null;
-      }
-    }
-  }
-  return { authorized, token }
-}
-
 // API to validate if user authorized
 app.get('/proxy/restapi/v1.0/client-info', async (req, res) => {
   const rcSDK = new RingCentral(ringcentralOptions);
@@ -124,45 +97,6 @@ app.get('/proxy/restapi/v1.0/client-info', async (req, res) => {
     endpoint_id: token.endpoint_id,
   });
 });
-
-// Change if need tp replace media uri to proxy
-const shouldHandleMediaLink = (path) => {
-  return (
-    path.indexOf('call-log') > -1 ||
-    path.indexOf('message-store') > -1 ||
-    path.indexOf('message-sync') > -1 ||
-    path.indexOf('meeting') > -1
-  );
-};
-
-// Replace media.ringcentral.com in response text to media proxy endpoint
-const handleMediaLink = (text) => {
-  const rcServer = ringcentralOptions.server;
-  const mediaServer = rcServer.replace('platform', 'media');
-  return text.split(mediaServer).join(`${process.env.SERVER}/proxy/media`);
-};
-
-// Format Header key, eg: "accept-encoding" to "Accept-Encoding"
-function formatHeaderKey(key) {
-  if (key === 'rcrequestid') {
-    return 'RCRequestId';
-  }
-  return key.split('-').map((word) => {
-    return word.charAt(0).toUpperCase() + word.slice(1)
-  }).join('-');
-}
-
-// Format Header keys
-const formatHeaders = (rawHeaders) => {
-  delete rawHeaders['content-length'];
-  delete rawHeaders['connection'];
-  delete rawHeaders['content-encoding'];
-  const headers = {};
-  Object.keys(rawHeaders).forEach((key) => {
-    headers[formatHeaderKey(key)] = rawHeaders[key].join(',')
-  });
-  return headers;
-}
 
 // Handle media request, proxy to RingCental media server
 app.use('/proxy/media', async (req, res) => {
@@ -230,7 +164,7 @@ app.use('/proxy', async (req, res) => {
   let body;
   if (shouldHandleMediaLink(req.path)) {
     body = await response.text();
-    body = handleMediaLink(body);
+    body = handleMediaLink(body, ringcentralOptions.server);
   } else {
     body = await response.buffer();
   }
