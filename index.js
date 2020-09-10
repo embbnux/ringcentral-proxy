@@ -90,7 +90,6 @@ async function checkAuthBeforeRequest(rcSDK, req) {
     }
     try {
       token = await tokenRefreshPromise[token.refresh_token];
-      console.log(token);
     } catch (e) {
       console.error(e);
       authorized = false
