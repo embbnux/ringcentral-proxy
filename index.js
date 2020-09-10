@@ -54,6 +54,7 @@ app.get('/proxy/oauth-callback', async (req, res) => {
   }
   const rcSDK = new RingCentral(ringcentralOptions);
   const token = await rcSDK.generateToken(req.query);
+  // In this app, we save RingCentral token in user's cookie with encryption, but it is recommend to save token in DB
   req.session.token = token;
   //  After authorized, redirect to app's redirect page
   res.redirect(`${redirectUrl}?result=success`);
@@ -82,13 +83,14 @@ async function checkAuthBeforeRequest(rcSDK, req) {
   let authorized = true;
   if (!rcSDK.isAccessTokenValid(token)) {
     let needToUpdateSession = false;
-    // handle refresh token concurrence issue
+    // handle refresh token concurrence issue, TODO: should save token in DB to avoid concurrence issue
     if (!tokenRefreshPromise[token.refresh_token]) {
       needToUpdateSession = true;
       tokenRefreshPromise[token.refresh_token] = rcSDK.refreshToken(token)
     }
     try {
       token = await tokenRefreshPromise[token.refresh_token];
+      console.log(token);
     } catch (e) {
       console.error(e);
       authorized = false
@@ -232,6 +234,9 @@ app.use('/proxy', async (req, res) => {
     body = handleMediaLink(body);
   } else {
     body = await response.buffer();
+  }
+  if (response.status === 401) {
+    req.session.token = null;
   }
   const headers = formatHeaders(response.headers.raw());
   res.set(headers);
